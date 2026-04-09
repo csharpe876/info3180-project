@@ -1,5 +1,5 @@
 {
-  "name": "info3180-vuejs-flask-starter",
+  "name": "driftdater",
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
@@ -7,6 +7,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "^1.15.0",
+    "pinia": "^2.1.7",
     "vue": "^3.2.47",
     "vue-router": "^4.1.6"
   },

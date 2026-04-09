@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #0f172a;
+  --navy2:   #1e293b;
+  --navy3:   #334155;
+  --rose:    #f43f5e;
+  --rose2:   #fb7185;
+  --rose3:   #fecdd3;
+  --cream:   #fdf8f0;
+  --cream2:  #f5ede0;
+  --gold:    #f59e0b;
+  --text:    #0f172a;
+  --muted:   #64748b;
+  --white:   #ffffff;
+  --radius:  12px;
+  --shadow:  0 4px 24px rgba(15,23,42,0.10);
+  --shadow-lg: 0 8px 48px rgba(15,23,42,0.16);
+  --transition: 0.2s ease;
+}
+
+html { font-size: 16px; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+h1, h2, h3 { font-family: 'Playfair Display', serif; }
+
+a { text-decoration: none; color: inherit; }
+
+button {
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+}
+
+/* ── Utilities ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 22px; border-radius: 50px; font-size: 0.9rem;
+  font-weight: 600; transition: all var(--transition); cursor: pointer; border: none;
+}
+.btn-primary   { background: var(--rose); color: #fff; }
+.btn-primary:hover { background: #e11d48; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(244,63,94,0.35); }
+.btn-outline   { background: transparent; border: 1.5px solid var(--rose); color: var(--rose); }
+.btn-outline:hover { background: var(--rose); color: #fff; }
+.btn-ghost     { background: transparent; color: var(--muted); }
+.btn-ghost:hover   { color: var(--rose); }
+.btn-navy      { background: var(--navy); color: #fff; }
+.btn-navy:hover    { background: var(--navy2); }
+.btn:disabled  { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-field label { font-size: 0.82rem; font-weight: 600; color: var(--navy3); text-transform: uppercase; letter-spacing: 0.05em; }
+.form-field input,
+.form-field select,
+.form-field textarea {
+  padding: 11px 14px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 0.95rem; color: var(--text);
+  background: #f8fafc; transition: border-color var(--transition);
+  width: 100%;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus { border-color: var(--rose); background: #fff; }
+.form-field textarea { resize: vertical; min-height: 80px; }
+
+.error-msg {
+  background: #fff1f2; border: 1px solid #fecdd3;
+  color: #be123c; border-radius: 8px; padding: 10px 14px;
+  font-size: 0.88rem;
+}
+.success-msg {
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  color: #15803d; border-radius: 8px; padding: 10px 14px;
+  font-size: 0.88rem;
+}
+
+/* ── Page transition ── */
+.page-enter-active, .page-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.page-enter-from { opacity: 0; transform: translateY(8px); }
+.page-leave-to   { opacity: 0; transform: translateY(-8px); }
+
+/* ── Spinner ── */
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--cream2);
+  border-top-color: var(--rose);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 40px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--muted);
+}
+.empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+.empty-state h3 { font-family: 'DM Sans', sans-serif; font-size: 1.1rem; margin-bottom: 6px; color: var(--navy3); }
+
+/* ── Badge ── */
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 50px;
+  font-size: 0.75rem; font-weight: 600;
+}
+.badge-rose   { background: var(--rose3); color: var(--rose); }
+.badge-navy   { background: var(--navy); color: #fff; }
+.badge-gold   { background: #fef3c7; color: #92400e; }
