@@ -3,10 +3,10 @@
  * All calls to the Flask backend go through here.
  */
 
-const BASE = 'http://localhost:5000/api/v1'
+const BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 function getToken() {
-  return localStorage.getItem('dd_token')
+  return localStorage.getItem('token')
 }
 
 async function request(method, path, body = null, isForm = false) {

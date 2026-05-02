@@ -31,6 +31,9 @@ coverage
 __pycache__
 venv
 
+# Uploaded user files — never commit to git
+uploads/
+
 # Environment Variables
 .env
 .flaskenv

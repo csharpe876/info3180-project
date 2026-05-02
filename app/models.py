@@ -149,7 +149,11 @@ class Profile(db.Model):
             'country': self.country,
             'occupation': self.occupation,
             'education_level': self.education_level,
-            'photo_url': f"/api/v1/uploads/{self.photo_filename}" if self.photo_filename else None,
+            'photo_url': (
+                self.photo_filename
+                if (self.photo_filename and self.photo_filename.startswith('http'))
+                else (f"/api/v1/uploads/{self.photo_filename}" if self.photo_filename else None)
+            ),
             'is_public': self.is_public,
             'interests': [i.name for i in self.interests],
             'preferred_age_min': self.preferred_age_min,

@@ -55,7 +55,6 @@ def token_required(f):
             token = auth_header.split(' ', 1)[1]
         
         if not token:
-            print("DEBUG: Authentication token is missing.")
             return jsonify({'error': 'Authentication token is missing.'}), 401
 
         try:
@@ -66,25 +65,21 @@ def token_required(f):
             raw_id = data.get('sub') or data.get('user_id')
             
             if not raw_id:
-                print(f"DEBUG: No user identity found in token payload: {data}")
                 return jsonify({'error': 'Invalid token payload.'}), 401
 
             # Cast to int to ensure compatibility with Database Primary Key
             g.current_user = db.session.get(User, int(raw_id))
-            
+
             if not g.current_user:
-                print(f"DEBUG: User ID {raw_id} not found in database.")
                 return jsonify({'error': 'User not found.'}), 401
 
 
 
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired.'}), 401
-        except jwt.InvalidTokenError as e:
-            print(f"DEBUG: JWT Validation Error: {str(e)}")
+        except jwt.InvalidTokenError:
             return jsonify({'error': 'Invalid token.'}), 401
-        except Exception as e:
-            print(f"DEBUG: Unexpected Auth Error: {str(e)}")
+        except Exception:
             return jsonify({'error': 'Internal server error.'}), 500
 
         return f(*args, **kwargs)
@@ -293,7 +288,6 @@ def get_profiles():
 
     # Execute query
     profiles = query.all()
-    print(f"DEBUG: Profiles returned from Database query: {len(profiles)}")
 
     # Age filter (computed in Python)
     try:
@@ -308,8 +302,7 @@ def get_profiles():
         if p.age is not None and age_min <= p.age <= age_max:
             final_profiles.append(p)
         else:
-            reason = "Age is None" if p.age is None else f"Age {p.age} out of range"
-            print(f"DEBUG: Filtering out Profile ID {p.id} ({p.first_name}) because: {reason}")
+            pass  # skip profiles outside the requested age range
 
     # Compute match scores
     my_profile = me.profile
@@ -407,12 +400,33 @@ def update_profile(user_id):
     # Photo upload
     photo = request.files.get('photo')
     if photo and photo.filename and allowed_file(photo.filename):
-        ext = photo.filename.rsplit('.', 1)[1].lower()
-        filename = f"user_{user_id}_{uuid.uuid4().hex}.{ext}"
-        upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
-        os.makedirs(upload_dir, exist_ok=True)
-        photo.save(os.path.join(upload_dir, filename))
-        profile.photo_filename = filename
+        # Use Cloudinary when credentials are configured (production);
+        # fall back to local disk storage in local development.
+        if app.config.get('CLOUDINARY_CLOUD_NAME'):
+            import cloudinary.uploader
+            result = cloudinary.uploader.upload(
+                photo,
+                folder='driftdater/profiles',
+                public_id=f"user_{user_id}_{uuid.uuid4().hex}",
+                overwrite=True,
+                resource_type='image',
+                transformation=[{
+                    'width': 800,
+                    'height': 800,
+                    'crop': 'limit',
+                    'quality': 'auto',
+                    'fetch_format': 'auto',
+                }],
+            )
+            profile.photo_filename = result['secure_url']
+        else:
+            # Local development fallback — save to UPLOAD_FOLDER on disk
+            ext = photo.filename.rsplit('.', 1)[1].lower()
+            filename = f"user_{user_id}_{uuid.uuid4().hex}.{ext}"
+            upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+            os.makedirs(upload_dir, exist_ok=True)
+            photo.save(os.path.join(upload_dir, filename))
+            profile.photo_filename = filename
 
     profile.updated_at = datetime.now(timezone.utc)
     db.session.commit()
@@ -640,24 +654,43 @@ def get_interests():
 
 @app.route('/api/v1/uploads/<filename>')
 def uploaded_file(filename):
-    """Serve uploaded profile photos using absolute path."""
+    """Serve locally-stored profile photos (local development only)."""
     upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
     return send_from_directory(upload_dir, filename)
 
 
 # ============================================================
-# Utility / SPA catch-all
+# SPA catch-all — serves the Vite-built Vue frontend
 # ============================================================
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-    """Return API info for root; Vue handles actual SPA routing."""
-    return jsonify({
-        'message': 'DriftDater API',
-        'version': '1.0',
-        'docs': '/api/v1/',
-    })
+    """
+    Serve the Vue SPA for every non-API route.
+
+    Strategy:
+      1. If the request path maps to an existing file inside dist/ (JS bundles,
+         CSS, images, favicon, etc.) serve that file directly.
+      2. For everything else (/, /login, /dashboard, /profile, unknown paths)
+         serve index.html and let Vue Router handle navigation client-side.
+
+    A defensive guard prevents API routes from ever reaching this handler;
+    in practice Flask matches /api/* routes before the wildcard catch-all.
+    """
+    from app import DIST_DIR
+
+    # Defensive guard — should be unreachable, but keeps the contract clear
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found.'}), 404
+
+    # Serve static assets that exist in the build output verbatim
+    target = os.path.join(DIST_DIR, path)
+    if path and os.path.isfile(target):
+        return send_from_directory(DIST_DIR, path)
+
+    # SPA fallback: let Vue Router handle all navigation routes
+    return send_from_directory(DIST_DIR, 'index.html')
 
 
 
