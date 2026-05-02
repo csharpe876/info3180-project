@@ -3,7 +3,7 @@
  * All calls to the Flask backend go through here.
  */
 
-const BASE = 'http://localhost:5000/api/v1'
+const BASE = import.meta.env.VITE_API_BASE || 'https://info3180-project-dt4x.onrender.com/api/v1'
 
 function getToken() {
   return localStorage.getItem('dd_token')
