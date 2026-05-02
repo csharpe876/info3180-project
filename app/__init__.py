@@ -18,6 +18,9 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 import os
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Path to the built Vue SPA (created by `npm run build`)
+DIST_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'dist'))
+
 # Initialise Cloudinary SDK when credentials are present (production)
 if app.config.get('CLOUDINARY_CLOUD_NAME'):
     import cloudinary

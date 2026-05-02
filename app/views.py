@@ -664,12 +664,31 @@ def uploaded_file(filename):
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-    """Return API info for root; Vue handles actual SPA routing."""
-    return jsonify({
-        'message': 'DriftDater API',
-        'version': '1.0',
-        'docs': '/api/v1/',
-    })
+    """Serve the Vue SPA for all non-API routes.
+
+    Flask serves exact static asset paths (JS/CSS chunks, images) directly from
+    dist/, and falls back to dist/index.html so Vue Router handles client-side
+    navigation.  API routes should never reach here because they are registered
+    above with explicit /api/v1/... prefixes.
+    """
+    from app import DIST_DIR
+    # Safety net: if an /api/ path somehow falls through, return 404 JSON.
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found.'}), 404
+
+    # dist/ may not exist in pure-API dev mode (no `npm run build` run yet).
+    dist_index = os.path.join(DIST_DIR, 'index.html')
+    if not os.path.isfile(dist_index):
+        return jsonify({'message': 'DriftDater API', 'version': '1.0'}), 200
+
+    # Serve the exact file if it exists (Vite asset chunks, favicon, etc.)
+    if path:
+        target = os.path.join(DIST_DIR, path)
+        if os.path.isfile(target):
+            return send_from_directory(DIST_DIR, path)
+
+    # Everything else: hand off to Vue Router via index.html
+    return send_from_directory(DIST_DIR, 'index.html')
 
 
 

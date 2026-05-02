@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: driftdater
+    runtime: python
+
+    # Build: install Python deps, then build the Vue SPA so Flask can serve it.
+    buildCommand: "pip install -r requirements.txt && npm ci && npm run build"
+
+    # Start: run any pending DB migrations first, then launch gunicorn.
+    # --workers 2 --threads 2  safe for Render's free tier (0.1 CPU / 512 MB RAM).
+    # --timeout 120            prevents worker kills during cold-start DB migrations.
+    startCommand: "flask db upgrade && gunicorn --workers 2 --threads 2 --timeout 120 app:app"
+
+    envVars:
+      # Required by Flask CLI for `flask db upgrade` in the start command.
+      - key: FLASK_APP
+        value: app
+
+      # Tell Flask it is running in production; enables the SECRET_KEY guard.
+      - key: FLASK_ENV
+        value: production
+
+      # Render auto-generates a cryptographically secure random value.
+      # Never set this manually — let Render manage it.
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Injected automatically by Render from the attached PostgreSQL database.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: driftdater-db
+          property: connectionString
+
+      # Cloudinary credentials — set these manually in the Render dashboard.
+      # Do NOT commit real values here; mark them sync: false so Render does
+      # not try to sync them from this file.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # Restrict CORS to the production frontend URL.
+      # Update this value to your actual Render service URL after first deploy.
+      - key: CORS_ORIGINS
+        value: https://driftdater.onrender.com
+
+databases:
+  - name: driftdater-db
+    databaseName: driftdater
+    plan: free
