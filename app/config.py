@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 # already in the shell environment, regardless of cwd at startup.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'), override=True)
-load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'), override=True)
 
 
 class Config(object):
@@ -26,3 +25,8 @@ class Config(object):
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB max upload
     JWT_EXPIRY_HOURS = int(os.environ.get('JWT_EXPIRY_HOURS', 24))
     WTF_CSRF_ENABLED = False  # CSRF handled via JWT; disable for API
+
+    # Cloudinary (cloud photo storage — required in production)
+    CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+    CLOUDINARY_API_KEY    = os.environ.get('CLOUDINARY_API_KEY', '')
+    CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')

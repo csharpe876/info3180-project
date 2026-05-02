@@ -404,15 +404,27 @@ def update_profile(user_id):
             new_interests.append(interest)
         profile.interests = new_interests
 
-    # Photo upload
+    # Photo upload — use Cloudinary when credentials are configured (production),
+    # fall back to local disk otherwise (development).
     photo = request.files.get('photo')
     if photo and photo.filename and allowed_file(photo.filename):
-        ext = photo.filename.rsplit('.', 1)[1].lower()
-        filename = f"user_{user_id}_{uuid.uuid4().hex}.{ext}"
-        upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
-        os.makedirs(upload_dir, exist_ok=True)
-        photo.save(os.path.join(upload_dir, filename))
-        profile.photo_filename = filename
+        if app.config.get('CLOUDINARY_CLOUD_NAME'):
+            import cloudinary.uploader
+            result = cloudinary.uploader.upload(
+                photo,
+                folder='driftdater/profiles',
+                public_id=f"user_{user_id}",
+                overwrite=True,
+                resource_type='image',
+            )
+            profile.photo_filename = result['secure_url']
+        else:
+            ext = photo.filename.rsplit('.', 1)[1].lower()
+            filename = f"user_{user_id}_{uuid.uuid4().hex}.{ext}"
+            upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
+            os.makedirs(upload_dir, exist_ok=True)
+            photo.save(os.path.join(upload_dir, filename))
+            profile.photo_filename = filename
 
     profile.updated_at = datetime.now(timezone.utc)
     db.session.commit()

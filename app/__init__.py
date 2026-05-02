@@ -18,4 +18,14 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 import os
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Initialise Cloudinary SDK when credentials are present (production)
+if app.config.get('CLOUDINARY_CLOUD_NAME'):
+    import cloudinary
+    cloudinary.config(
+        cloud_name=app.config['CLOUDINARY_CLOUD_NAME'],
+        api_key=app.config['CLOUDINARY_API_KEY'],
+        api_secret=app.config['CLOUDINARY_API_SECRET'],
+        secure=True,
+    )
+
 from app import views, models
