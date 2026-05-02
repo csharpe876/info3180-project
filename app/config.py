@@ -1,10 +1,12 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
-# Resolve the project root (one level above this file's directory)
+# Resolve the project root first so load_dotenv receives an absolute path.
+# Using override=True ensures .env values always win over any stale values
+# already in the shell environment, regardless of cwd at startup.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'), override=True)
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'), override=True)
 
 
 class Config(object):
