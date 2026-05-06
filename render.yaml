@@ -4,7 +4,7 @@ services:
     runtime: python
 
     # Build: install Python deps, then build the Vue SPA so Flask can serve it.
-    buildCommand: "pip install -r requirements.txt && npm ci && npm run build"
+    buildCommand: "pip install -r requirements.txt && npm install && npm run build && ls -la dist/"
 
     # Start: run any pending DB migrations first, then launch gunicorn.
     # --workers 2 --threads 2  safe for Render's free tier (0.1 CPU / 512 MB RAM).
