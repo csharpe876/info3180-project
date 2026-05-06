@@ -45,3 +45,9 @@ services:
       # Update this value to your actual Render service URL after first deploy.
       - key: CORS_ORIGINS
         value: https://info3180-project-1-4z3c.onrender.com/
+
+databases:
+  - name: group_project
+    type: postgresql
+    databaseName: group_project
+    plan: free
