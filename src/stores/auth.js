@@ -5,7 +5,7 @@ import { useProfileStore } from './profile'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || null)
-  const user  = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const user  = ref((() => { try { return JSON.parse(localStorage.getItem('user')) ?? null } catch { return null } })())
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -13,7 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = t
     user.value  = u
     localStorage.setItem('token', t)
-    localStorage.setItem('user',  JSON.stringify(u))
+    localStorage.setItem('user',  JSON.stringify(u ?? null))
   }
 
   function clearAuth() {
