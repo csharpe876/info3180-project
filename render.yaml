@@ -28,7 +28,7 @@ services:
       # Injected automatically by Render from the attached PostgreSQL database.
       - key: DATABASE_URL
         fromDatabase:
-          name: group_project
+          name: drift_dater_db
           property: connectionString
 
       # Cloudinary credentials — set these manually in the Render dashboard.
@@ -47,7 +47,7 @@ services:
         value: https://info3180-project-1-4z3c.onrender.com/
 
 databases:
-  - name: group_project
+  - name: drift_dater_db
     type: postgresql
     databaseName: group_project
     plan: free
