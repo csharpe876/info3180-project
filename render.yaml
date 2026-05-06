@@ -7,10 +7,10 @@ services:
     # and committed to git, so Node.js is not needed on Render's build server.
     buildCommand: "pip install -r requirements.txt"
 
-    # Start: run any pending DB migrations first, then launch gunicorn.
+    # Start: run migrations, seed sample data (skips existing rows), then launch gunicorn.
     # --workers 2 --threads 2  safe for Render's free tier (0.1 CPU / 512 MB RAM).
     # --timeout 120            prevents worker kills during cold-start DB migrations.
-    startCommand: "flask db upgrade && gunicorn --workers 2 --threads 2 --timeout 120 app:app"
+    startCommand: "flask db upgrade && python seed.py && gunicorn --workers 2 --threads 2 --timeout 120 app:app"
 
     envVars:
       # Required by Flask CLI for `flask db upgrade` in the start command.
