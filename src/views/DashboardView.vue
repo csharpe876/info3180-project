@@ -158,7 +158,7 @@ async function act(profile, action) {
 
 onMounted(async () => {
   if (!profileStore.myProfile) {
-    await profileStore.fetchMyProfile(auth.user.id)
+    await profileStore.fetchMyProfile(auth.user?.id)
   }
   loadProfiles()
 })

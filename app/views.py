@@ -11,6 +11,7 @@ from functools import wraps
 
 from flask import request, jsonify, send_from_directory, g, current_app
 from werkzeug.utils import secure_filename
+from werkzeug.datastructures import ImmutableMultiDict
 
 from app import app, db
 from app.models import User, Profile, Interest, Like, Match, Message, Favourite
@@ -25,6 +26,20 @@ from app.forms import (
 # ============================================================
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
+def json_formdata():
+    """Convert a JSON request body into ImmutableMultiDict so WTForms
+    processes it through the normal formdata pipeline (including DateField
+    string-to-date conversion). Falls back to request.form for
+    form-encoded requests.
+    """
+    json_data = request.get_json(silent=True)
+    if json_data and isinstance(json_data, dict):
+        return ImmutableMultiDict(
+            [(k, str(v) if v is not None else '') for k, v in json_data.items()]
+        )
+    return request.form
 
 
 def allowed_file(filename):
@@ -156,8 +171,7 @@ def compute_match_score(profile_a: Profile, profile_b: Profile) -> float:
 @app.route('/api/v1/auth/register', methods=['POST'])
 def register():
     """Register a new user and create their initial profile stub."""
-    data = request.get_json(silent=True) or request.form
-    form = RegistrationForm(data=data)
+    form = RegistrationForm(formdata=json_formdata())
 
     if not form.validate():
         return jsonify({'errors': form_errors(form)}), 400
@@ -198,8 +212,7 @@ def register():
 @app.route('/api/v1/auth/login', methods=['POST'])
 def login():
     """Authenticate user and return JWT."""
-    data = request.get_json(silent=True) or request.form
-    form = LoginForm(data=data)
+    form = LoginForm(formdata=json_formdata())
 
     if not form.validate():
         return jsonify({'errors': form_errors(form)}), 400
