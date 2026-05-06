@@ -96,7 +96,7 @@ npm run dev
 ```
 
 ### 6. Open the app
-Visit **http://localhost:5173** in your browser.
+Visit **https://info3180-project-1-4z3c.onrender.com/** in your browser
 
 ---
 
@@ -257,7 +257,9 @@ All endpoints are prefixed with `/api/v1/`.
 
 ## Deployment
 
-See [Render deployment guide](https://render.com/docs/deploy-flask) for deploying the Flask backend.
+Render utilized for deploypment of application on the web.
 
-For the Vue frontend, run `npm run build` and deploy the `dist/` folder as a static site on Render or Netlify.
+For the Flask backend, run `pip install -r requirements.txt` and then deploy the app with `gunicorn app:app`
+
+For the Vue frontend, run `npm run build` and deploy the `dist/` folder as a static site on Render
 
