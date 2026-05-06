@@ -10,7 +10,7 @@ services:
     # Start: run migrations, seed sample data (skips existing rows), then launch gunicorn.
     # --workers 2 --threads 2  safe for Render's free tier (0.1 CPU / 512 MB RAM).
     # --timeout 120            prevents worker kills during cold-start DB migrations.
-    startCommand: "flask db upgrade && python seed.py && gunicorn --workers 2 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT app:app"
+    startCommand: "bash -c 'flask db upgrade && python seed.py; gunicorn --workers 2 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT app:app'"
 
     envVars:
       # Required by Flask CLI for `flask db upgrade` in the start command.
