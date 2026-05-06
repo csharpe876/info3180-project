@@ -259,29 +259,36 @@ def register():
 @app.route('/api/v1/auth/login', methods=['POST'])
 def login():
     """Authenticate user and return JWT."""
-    data = request.get_json(silent=True) or {}
-    email    = (data.get('email') or '').strip().lower()
-    password = data.get('password') or ''
+    try:
+        data = request.get_json(silent=True) or {}
+        email    = (data.get('email') or '').strip().lower()
+        password = data.get('password') or ''
 
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required.'}), 400
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required.'}), 400
 
-    print(f'DEBUG login attempt: email={email}')
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        print(f'DEBUG login: no user found for email={email}')
-        return jsonify({'error': 'Invalid email or password.'}), 401
-    if not user.check_password(password):
-        print(f'DEBUG login: wrong password for email={email}')
-        return jsonify({'error': 'Invalid email or password.'}), 401
+        print(f'DEBUG login attempt: email={email}')
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            print(f'DEBUG login: no user found for email={email}')
+            return jsonify({'error': 'Invalid email or password.'}), 401
+        if not user.check_password(password):
+            print(f'DEBUG login: wrong password for email={email}')
+            return jsonify({'error': 'Invalid email or password.'}), 401
 
-    token = generate_token(user.id)
-    print(f'DEBUG login success: user_id={user.id}')
-    return jsonify({
-        'message': 'Login successful.',
-        'token': token,
-        'user': user.to_dict(),
-    }), 200
+        token = generate_token(user.id)
+        print(f'DEBUG login success: user_id={user.id}')
+        resp = jsonify({
+            'message': 'Login successful.',
+            'token': token,
+            'user': user.to_dict(),
+        })
+        resp.status_code = 200
+        return resp
+    except Exception as e:
+        import traceback
+        print(f'ERROR in login: {traceback.format_exc()}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 @app.route('/api/v1/auth/logout', methods=['POST'])
@@ -715,6 +722,26 @@ def get_interests():
 
 
 # ============================================================
+# Health Check
+# ============================================================
+
+@app.route('/api/v1/health', methods=['GET'])
+def health():
+    """Database connectivity and app health check."""
+    try:
+        user_count = db.session.execute(db.text('SELECT COUNT(*) FROM users')).scalar()
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        db_type = 'postgresql' if 'postgresql' in db_url else 'sqlite'
+        return jsonify({
+            'status': 'ok',
+            'database': db_type,
+            'user_count': user_count,
+        }), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'detail': str(e)}), 500
+
+
+# ============================================================
 # File Serving
 # ============================================================
 
@@ -765,7 +792,11 @@ def catch_all(path):
 @app.after_request
 def add_header(response):
     response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
-    response.headers['Cache-Control'] = 'public, max-age=0'
+    # Only allow caching on safe read-only requests; never cache auth/mutation responses
+    if request.method == 'GET':
+        response.headers['Cache-Control'] = 'public, max-age=0'
+    else:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     return response
 
 
