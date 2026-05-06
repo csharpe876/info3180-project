@@ -3,8 +3,10 @@ services:
     name: driftdater
     runtime: python
 
-    # Build: install Python deps, then build the Vue SPA so Flask can serve it.
-    buildCommand: "pip install -r requirements.txt && npm install && npm run build && ls -la dist/"
+    # Build: install Python deps, install Node 20 via nvm, then build the Vue SPA.
+    # build.sh handles Node.js setup explicitly because Render's Python image
+    # does not ship Node.js by default.
+    buildCommand: "bash build.sh"
 
     # Start: run any pending DB migrations first, then launch gunicorn.
     # --workers 2 --threads 2  safe for Render's free tier (0.1 CPU / 512 MB RAM).
