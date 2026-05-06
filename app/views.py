@@ -9,6 +9,8 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
+import re
+from datetime import date as date_type
 from flask import request, jsonify, send_from_directory, g, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import ImmutableMultiDict
@@ -171,35 +173,80 @@ def compute_match_score(profile_a: Profile, profile_b: Profile) -> float:
 @app.route('/api/v1/auth/register', methods=['POST'])
 def register():
     """Register a new user and create their initial profile stub."""
-    form = RegistrationForm(formdata=json_formdata())
+    data = request.get_json(silent=True) or {}
 
-    if not form.validate():
-        return jsonify({'errors': form_errors(form)}), 400
+    # --- manual validation (avoids WTForms/JSON formdata issues) ---
+    errors = []
+    username   = (data.get('username') or '').strip()
+    email      = (data.get('email') or '').strip().lower()
+    password   = data.get('password') or ''
+    first_name = (data.get('first_name') or '').strip()
+    last_name  = (data.get('last_name') or '').strip()
+    dob_str    = (data.get('date_of_birth') or '').strip()
+    gender     = (data.get('gender') or '').strip()
+    looking_for = (data.get('looking_for') or 'any').strip()
+
+    if not username or len(username) < 3:
+        errors.append('Username must be at least 3 characters.')
+    if not email or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        errors.append('A valid email is required.')
+    if not password or len(password) < 6:
+        errors.append('Password must be at least 6 characters.')
+    if not first_name:
+        errors.append('First name is required.')
+    if not last_name:
+        errors.append('Last name is required.')
+    if gender not in ('male', 'female', 'non-binary', 'other'):
+        errors.append('Gender must be male, female, non-binary, or other.')
+    if looking_for not in ('any', 'male', 'female', 'non-binary'):
+        looking_for = 'any'
+
+    dob = None
+    if not dob_str:
+        errors.append('Date of birth is required.')
+    else:
+        try:
+            dob = date_type.fromisoformat(dob_str)
+            today = date_type.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age < 18:
+                errors.append('You must be at least 18 years old to register.')
+            if age > 120:
+                errors.append('Please enter a valid date of birth.')
+        except ValueError:
+            errors.append('Date of birth must be in YYYY-MM-DD format.')
+
+    if errors:
+        print(f'DEBUG register validation errors: {errors}')
+        return jsonify({'errors': errors}), 400
 
     # Check uniqueness
-    if User.query.filter_by(email=form.email.data.lower()).first():
+    if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered.'}), 409
-    if User.query.filter_by(username=form.username.data).first():
+    if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already taken.'}), 409
 
-    user = User(
-        username=form.username.data,
-        email=form.email.data.lower(),
-    )
-    user.set_password(form.password.data)
-    db.session.add(user)
-    db.session.flush()  # get user.id before commit
+    try:
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
 
-    profile = Profile(
-        user_id=user.id,
-        first_name=form.first_name.data,
-        last_name=form.last_name.data,
-        date_of_birth=form.date_of_birth.data,
-        gender=form.gender.data,
-        looking_for=form.looking_for.data,
-    )
-    db.session.add(profile)
-    db.session.commit()
+        profile = Profile(
+            user_id=user.id,
+            first_name=first_name,
+            last_name=last_name,
+            date_of_birth=dob,
+            gender=gender,
+            looking_for=looking_for,
+        )
+        db.session.add(profile)
+        db.session.commit()
+        print(f'DEBUG register success: user_id={user.id} email={email}')
+    except Exception as exc:
+        db.session.rollback()
+        print(f'DEBUG register DB error: {exc}')
+        return jsonify({'error': 'Registration failed due to a server error.'}), 500
 
     token = generate_token(user.id)
     return jsonify({
@@ -212,16 +259,24 @@ def register():
 @app.route('/api/v1/auth/login', methods=['POST'])
 def login():
     """Authenticate user and return JWT."""
-    form = LoginForm(formdata=json_formdata())
+    data = request.get_json(silent=True) or {}
+    email    = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
 
-    if not form.validate():
-        return jsonify({'errors': form_errors(form)}), 400
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required.'}), 400
 
-    user = User.query.filter_by(email=form.email.data.lower()).first()
-    if not user or not user.check_password(form.password.data):
+    print(f'DEBUG login attempt: email={email}')
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        print(f'DEBUG login: no user found for email={email}')
+        return jsonify({'error': 'Invalid email or password.'}), 401
+    if not user.check_password(password):
+        print(f'DEBUG login: wrong password for email={email}')
         return jsonify({'error': 'Invalid email or password.'}), 401
 
     token = generate_token(user.id)
+    print(f'DEBUG login success: user_id={user.id}')
     return jsonify({
         'message': 'Login successful.',
         'token': token,

@@ -49,7 +49,8 @@ async function handleLogin() {
     await auth.login(form.email, form.password)
     router.push('/dashboard')
   } catch (e) {
-    error.value = e.response?.data?.error || 'Login failed. Please try again.'
+    const d = e.response?.data
+    error.value = d?.error || (Array.isArray(d?.errors) ? d.errors.join(', ') : null) || e.message || 'Login failed. Please try again.'
   } finally {
     loading.value = false
   }
