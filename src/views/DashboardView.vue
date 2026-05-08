@@ -82,10 +82,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
+import { useFlashStore } from '../stores/flash'
 import { getProfiles, likeProfile, addFavourite, reportUser } from '../services/api'
 
 const auth          = useAuthStore()
 const profileStore  = useProfileStore()
+const flash         = useFlashStore()
 const myProfile     = computed(() => profileStore.myProfile)
 const profiles      = ref([])
 const loading   = ref(false)
@@ -129,8 +131,13 @@ function resetFilters() {
 }
 
 async function bookmark(profile) {
-  bookmarked[profile.id] = true
-  try { await addFavourite(profile.id) } catch { delete bookmarked[profile.id] }
+  try {
+    await addFavourite(profile.id)
+    bookmarked[profile.id] = true
+    flash.flash(`${profile.first_name} saved to favourites!`)
+  } catch {
+    flash.flash('Failed to save profile.', 'error')
+  }
 }
 
 async function report(profile) {
@@ -139,20 +146,25 @@ async function report(profile) {
   const details = prompt("Any additional details? (optional)") || ""
   try {
     await reportUser(profile.user_id, reason.trim(), details.trim())
-    alert("Report submitted. Thank you!")
+    flash.flash('Report submitted. Thank you!')
   } catch (e) {
-    alert(e.response?.data?.error || "Failed to submit report.")
+    flash.flash(e.response?.data?.error || 'Failed to submit report.', 'error')
   }
 }
 
 async function act(profile, action) {
   acted[profile.user_id] = true
   try {
-    await likeProfile(profile.user_id, action)
-    // Remove from list smoothly
+    const { data } = await likeProfile(profile.user_id, action)
     profiles.value = profiles.value.filter(p => p.user_id !== profile.user_id)
+    if (data.is_new_match) {
+      flash.flash(`It\'s a match with ${profile.first_name}! 🎉`)
+    } else if (action === 'like') {
+      flash.flash(`You liked ${profile.first_name}!`)
+    }
   } catch {
     delete acted[profile.user_id]
+    flash.flash('Action failed. Please try again.', 'error')
   }
 }
 

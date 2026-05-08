@@ -62,6 +62,9 @@ export const removeFavourite = (pid) => api.delete(`/favourites/${pid}`)
 // ── Interests ─────────────────────────────────────────────
 export const getInterests = () => api.get('/interests')
 
+// ── Account Credentials ───────────────────────────────────
+export const updateAccount = (uid, data) => api.put(`/users/${uid}/account`, data)
+
 // ── Report & Block ────────────────────────────────────────
 export const reportUser  = (uid, reason, details) => api.post(`/users/${uid}/report`, { reason, details })
 export const blockUser   = (uid) => api.post(`/users/${uid}/block`)

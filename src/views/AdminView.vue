@@ -98,9 +98,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useFlashStore } from '../stores/flash'
 import api from '../services/api'
 
 const auth        = useAuthStore()
+const flash       = useFlashStore()
 const authUser    = computed(() => auth.user)
 const isAdmin     = computed(() => auth.user?.id === 1)
 const activeTab   = ref('users')
@@ -156,8 +158,9 @@ async function deleteUser(u) {
     await api.delete(`/admin/users/${u.id}`)
     users.value = users.value.filter(x => x.id !== u.id)
     await loadStats()
+    flash.flash(`User "${u.username}" deleted successfully.`)
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to delete user.')
+    flash.flash(e.response?.data?.error || 'Failed to delete user.', 'error')
   }
 }
 
@@ -166,7 +169,10 @@ async function resolveReport(r, status) {
     await api.put(`/admin/reports/${r.id}`, { status })
     reports.value = reports.value.filter(x => x.id !== r.id)
     await loadStats()
-  } catch {}
+    flash.flash(`Report marked as ${status}.`)
+  } catch {
+    flash.flash('Failed to update report.', 'error')
+  }
 }
 
 onMounted(async () => {

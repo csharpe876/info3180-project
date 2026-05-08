@@ -7,7 +7,7 @@
         <p>Sign in to continue your journey</p>
       </div>
 
-      <div v-if="error" class="error-msg">{{ error }}</div>
+      <div v-if="error" class="error-msg" role="alert">{{ error }}</div>
 
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="form-field">
@@ -35,8 +35,10 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useFlashStore } from '../stores/flash'
 
 const auth    = useAuthStore()
+const flash   = useFlashStore()
 const router  = useRouter()
 const loading = ref(false)
 const error   = ref('')
@@ -47,6 +49,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await auth.login(form.email, form.password)
+    flash.flash('Welcome back!')
     router.push('/dashboard')
   } catch (e) {
     const d = e.response?.data

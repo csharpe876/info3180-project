@@ -75,8 +75,10 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useFlashStore } from '../stores/flash'
 
 const auth    = useAuthStore()
+const flash   = useFlashStore()
 const router  = useRouter()
 const loading = ref(false)
 const error   = ref('')
@@ -91,6 +93,7 @@ async function handleRegister() {
   loading.value = true
   try {
     await auth.register({ ...form })
+    flash.flash('Account created! Complete your profile below.')
     router.push('/profile')
   } catch (e) {
     const d = e.response?.data

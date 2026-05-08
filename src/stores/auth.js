@@ -42,5 +42,10 @@ export const useAuthStore = defineStore('auth', () => {
     try { useProfileStore().clearProfile() } catch {}
   }
 
-  return { token, user, isLoggedIn, login, register, logout }
+  function updateUser(u) {
+    user.value = u
+    localStorage.setItem('user', JSON.stringify(u ?? null))
+  }
+
+  return { token, user, isLoggedIn, login, register, logout, updateUser }
 })

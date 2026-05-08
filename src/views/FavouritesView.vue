@@ -47,11 +47,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useFlashStore } from '../stores/flash'
 import { getFavourites, removeFavourite, likeProfile } from '../services/api'
 
 const favourites = ref([])
 const loading    = ref(true)
 const acted      = reactive({})
+const flash      = useFlashStore()
 
 function initials(p) {
   return (p.first_name?.[0] || '') + (p.last_name?.[0] || '')
@@ -61,15 +63,24 @@ async function remove(profile) {
   try {
     await removeFavourite(profile.id)
     favourites.value = favourites.value.filter(f => f.id !== profile.id)
-  } catch {}
+    flash.flash(`${profile.first_name} removed from favourites.`)
+  } catch {
+    flash.flash('Failed to remove bookmark.', 'error')
+  }
 }
 
 async function like(profile, action = 'like') {
   acted[profile.user_id] = action
   try {
-    await likeProfile(profile.user_id, action)
+    const { data } = await likeProfile(profile.user_id, action)
+    if (data.is_new_match) {
+      flash.flash(`It\'s a match with ${profile.first_name}! 🎉`)
+    } else if (action === 'like') {
+      flash.flash(`You liked ${profile.first_name}!`)
+    }
   } catch {
     delete acted[profile.user_id]
+    flash.flash('Action failed. Please try again.', 'error')
   }
 }
 

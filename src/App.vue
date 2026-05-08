@@ -6,11 +6,13 @@
         <component :is="Component" />
       </transition>
     </router-view>
+    <FlashMessage />
   </div>
 </template>
 
 <script setup>
 import AppNav from './components/AppNav.vue'
+import FlashMessage from './components/FlashMessage.vue'
 import { useAuthStore } from './stores/auth'
 const auth = useAuthStore()
 </script>

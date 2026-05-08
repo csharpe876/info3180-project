@@ -1,4 +1,4 @@
-# 💞 DriftDater
+﻿# 💞 DriftDater
 
 A full-stack dating web application built with **Vue 3** (frontend) and **Flask** (backend REST API).
 
@@ -20,15 +20,17 @@ A full-stack dating web application built with **Vue 3** (frontend) and **Flask*
 
 ### Core
 - **Authentication** — Register, login, logout with JWT tokens and bcrypt password hashing
-- **Profile Management** — Create and edit profiles with photo upload, bio, location, interests, occupation, education
+- **Profile Management** — Create and edit profiles with photo upload (Cloudinary in production, local disk in dev), bio, location, interests, occupation, and education level
+- **Account Settings** — Update username, email address, and password from the profile page
 - **Matching System** — Score-based algorithm (interests, age, location, gender preference), Like/Pass buttons, mutual match detection
-- **Messaging** — Real-time (polled) chat between matched users with full message history
-- **Search & Discovery** — Filter by name, parish, age range, interests with match score sorting
+- **Messaging** — Polled real-time chat between matched users with full conversation history
+- **Search & Discovery** — Filter by name, parish, age range, interests, and gender with match score sorting
 - **Favourites** — Bookmark profiles for later
+- **Flash Notifications** — Global toast message system for success, error, and info feedback across all pages
 
 ### Optional (implemented)
 1. **Report & Block System** — Report users for spam/harassment/fake profiles; block users from appearing in browse
-2. **Admin Dashboard** — Site statistics, user management, report moderation (accessible to user ID #1)
+2. **Admin Dashboard** — Site statistics, user management, and report moderation (accessible to user ID #1)
 
 ---
 
@@ -40,6 +42,7 @@ A full-stack dating web application built with **Vue 3** (frontend) and **Flask*
 | Backend | Flask 3, Flask-SQLAlchemy, Flask-Migrate, Flask-Login, Flask-CORS |
 | Auth | JWT (PyJWT), bcrypt |
 | Database | PostgreSQL (production) / SQLite (development) |
+| Storage | Cloudinary (production) / local `uploads/` folder (development) |
 | Deployment | Render (backend + frontend) |
 
 ---
@@ -69,13 +72,11 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.sample .env
-# Edit .env and set your DATABASE_URL and SECRET_KEY
+# Edit .env and set your DATABASE_URL, SECRET_KEY, and optional Cloudinary credentials
 ```
 
 ### 3. Database setup
 ```bash
-flask db init
-flask db migrate -m "initial schema"
 flask db upgrade
 
 # Optional: seed sample data
@@ -96,7 +97,7 @@ npm run dev
 ```
 
 ### 6. Open the app
-Visit **https://info3180-project-dt4x.onrender.com/** in your browser
+Visit **http://localhost:5173** in your browser (dev), or **https://info3180-project-dt4x.onrender.com/** for the live deployment.
 
 ---
 
@@ -108,8 +109,13 @@ Copy `.env.sample` to `.env` and fill in:
 |----------|-------------|---------|
 | `SECRET_KEY` | Flask secret key for sessions/JWT | random string |
 | `DATABASE_URL` | PostgreSQL connection string | SQLite fallback |
-| `UPLOAD_FOLDER` | Directory for uploaded photos | `uploads/` |
+| `UPLOAD_FOLDER` | Directory for uploaded photos (dev only) | `uploads/` |
 | `JWT_EXPIRY_HOURS` | JWT token lifetime in hours | `24` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name (production) | — |
+| `CLOUDINARY_API_KEY` | Cloudinary API key (production) | — |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret (production) | — |
+
+When `CLOUDINARY_CLOUD_NAME` is set, photo uploads are sent to Cloudinary. Otherwise photos are saved to `UPLOAD_FOLDER` on disk.
 
 ---
 
@@ -153,13 +159,35 @@ All endpoints are prefixed with `/api/v1/`.
 
 ---
 
+### Account Settings
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| PUT | `/users/<user_id>/account` | Update username, email, or password | Yes (own account only) |
+
+**Body:**
+```json
+{
+  "username": "new_username",
+  "email": "new@example.com",
+  "current_password": "oldpass123",
+  "new_password": "newpass456",
+  "confirm_password": "newpass456"
+}
+```
+
+- `current_password` is **required** when changing `email` or `new_password`.
+- All fields are optional — only include the ones you want to change.
+
+---
+
 ### Profiles
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/profiles` | Browse/search profiles (query params: `q`, `parish`, `age_min`, `age_max`, `gender`, `interests`, `sort`) |
 | GET | `/profiles/<user_id>` | Get single profile |
-| PUT | `/profiles/<user_id>` | Update own profile (multipart/form-data for photo) |
+| PUT | `/profiles/<user_id>` | Update own profile (multipart/form-data for photo upload, or JSON) |
 
 **Browse query params:**
 - `q` — text search (name, bio, occupation)
@@ -247,19 +275,52 @@ All endpoints are prefixed with `/api/v1/`.
 
 ---
 
+## Frontend Structure
+
+```
+src/
+├── App.vue                  # Root component — mounts global FlashMessage
+├── main.js
+├── router/index.js          # Vue Router (guarded routes)
+├── stores/
+│   ├── auth.js              # Pinia: JWT token, user, login/register/logout
+│   ├── profile.js           # Pinia: cached own profile
+│   └── flash.js             # Pinia: global toast notification queue
+├── services/api.js          # Axios client with JWT interceptor
+├── components/
+│   ├── AppNav.vue
+│   ├── AppHeader.vue
+│   ├── AppFooter.vue
+│   └── FlashMessage.vue     # Fixed-position toast container
+└── views/
+    ├── LoginView.vue
+    ├── RegisterView.vue
+    ├── DashboardView.vue    # Browse + like/pass + bookmark + report
+    ├── ProfileView.vue      # Edit profile + account settings
+    ├── MatchesView.vue
+    ├── MessagesView.vue
+    ├── FavouritesView.vue
+    └── AdminView.vue
+```
+
+---
+
 ## Known Issues / Limitations
 
-- Messaging uses 5-second polling (not WebSocket). For production, upgrade to Flask-SocketIO.
-- Admin access is determined by user ID #1 — in production use a proper role system.
-- Photo uploads are stored locally. For production, use S3 or Cloudinary.
+- Messaging uses 4-second polling (not WebSocket). For production, consider upgrading to Flask-SocketIO.
+- Admin access is determined by user ID #1 — in production use a proper role/permission system.
+- Photo uploads fall back to local disk in development; set Cloudinary credentials for persistent storage in production.
 
 ---
 
 ## Deployment
 
-Render utilized for deploypment of application on the web.
+The application is deployed on **Render**.
 
-For the Flask backend, run `pip install -r requirements.txt` and then deploy the app with `gunicorn app:app`
+**Backend:** `gunicorn app:app` — set all environment variables in the Render service dashboard.
 
-For the Vue frontend, run `npm run build` and deploy the `dist/` folder as a static site on Render
+**Frontend:** `npm run build` — deploy the `dist/` folder as a Render Static Site with the rewrite rule `/* → /index.html`.
+
+
+---
 

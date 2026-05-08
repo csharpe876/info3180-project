@@ -95,9 +95,11 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useFlashStore } from '../stores/flash'
 import { getConversations, getMessages, sendMessage } from '../services/api'
 
 const auth          = useAuthStore()
+const flash         = useFlashStore()
 const route         = useRoute()
 const conversations = ref([])
 const messages      = ref([])
@@ -156,6 +158,7 @@ async function sendMsg() {
     scrollDown()
   } catch {
     newMsg.value = body  // restore on failure
+    flash.flash('Failed to send message. Please try again.', 'error')
   }
   sending.value = false
 }

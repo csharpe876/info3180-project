@@ -24,8 +24,7 @@
         </div>
       </div>
 
-      <div v-if="success" class="success-msg">{{ success }}</div>
-      <div v-if="error"   class="error-msg">{{ error }}</div>
+
 
       <!-- Edit form -->
       <div class="edit-card card">
@@ -131,6 +130,47 @@
         </div>
       </div>
 
+      <!-- Account Settings -->
+      <div class="edit-card card">
+        <h2 class="section-title">Account Settings</h2>
+
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Username</label>
+            <input v-model="accountForm.username" placeholder="New username" autocomplete="username" />
+          </div>
+          <div class="form-field">
+            <label>Email Address</label>
+            <input v-model="accountForm.email" type="email" placeholder="New email address" autocomplete="email" />
+          </div>
+        </div>
+
+        <div class="pref-section">
+          <h3 class="pref-title">Change Password</h3>
+          <div class="form-grid">
+            <div class="form-field full">
+              <label>Current Password <span class="req-note">(required to change email or password)</span></label>
+              <input v-model="accountForm.current_password" type="password" placeholder="Enter current password" autocomplete="current-password" />
+            </div>
+            <div class="form-field">
+              <label>New Password</label>
+              <input v-model="accountForm.new_password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
+            </div>
+            <div class="form-field">
+              <label>Confirm New Password</label>
+              <input v-model="accountForm.confirm_password" type="password" placeholder="Repeat new password" autocomplete="new-password" />
+            </div>
+          </div>
+        </div>
+
+        <div class="save-row">
+          <button class="btn btn-primary" @click="saveAccount" :disabled="savingAccount">
+            {{ savingAccount ? 'Saving…' : 'Save Account Settings' }}
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -139,18 +179,27 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
-import { getProfile, updateProfile, getInterests } from '../services/api'
+import { useFlashStore } from '../stores/flash'
+import { getProfile, updateProfile, getInterests, updateAccount } from '../services/api'
 
 const auth         = useAuthStore()
 const profileStore = useProfileStore()
+const flash        = useFlashStore()
 const profile = ref({})
 const saving  = ref(false)
-const success = ref('')
-const error   = ref('')
 const previewUrl        = ref(null)
 const photoFile         = ref(null)
 const availableInterests = ref([])
 const selectedInterests  = ref([])
+
+const accountForm = reactive({
+  username: '',
+  email: '',
+  current_password: '',
+  new_password: '',
+  confirm_password: '',
+})
+const savingAccount = ref(false)
 
 const form = reactive({
   first_name: '', last_name: '', bio: '',
@@ -186,8 +235,7 @@ function populateForm(p) {
 }
 
 async function saveProfile() {
-  success.value = ''; error.value = ''
-  saving.value  = true
+  saving.value = true
   try {
     let payload
     if (photoFile.value) {
@@ -200,16 +248,39 @@ async function saveProfile() {
     }
     const { data } = await updateProfile(auth.user.id, payload)
     profile.value = data.profile
-    profileStore.setProfile(data.profile)  // sync shared store so Dashboard reflects changes
-    // Clear local preview — the persisted photo_url from the server now drives the image
+    profileStore.setProfile(data.profile)
     previewUrl.value = null
     photoFile.value  = null
-    success.value = 'Profile updated successfully!'
-    setTimeout(() => success.value = '', 3000)
+    flash.flash('Profile updated successfully!')
   } catch (e) {
-    error.value = e.response?.data?.error || 'Failed to save changes.'
+    flash.flash(e.response?.data?.error || 'Failed to save changes.', 'error')
   }
   saving.value = false
+}
+
+async function saveAccount() {
+  savingAccount.value = true
+  try {
+    const payload = {}
+    if (accountForm.username) payload.username = accountForm.username
+    if (accountForm.email)    payload.email    = accountForm.email
+    if (accountForm.current_password) payload.current_password = accountForm.current_password
+    if (accountForm.new_password)     payload.new_password     = accountForm.new_password
+    if (accountForm.confirm_password) payload.confirm_password = accountForm.confirm_password
+
+    const { data } = await updateAccount(auth.user.id, payload)
+    auth.updateUser(data.user)
+    accountForm.current_password = ''
+    accountForm.new_password     = ''
+    accountForm.confirm_password = ''
+    accountForm.username = data.user.username
+    accountForm.email    = data.user.email
+    flash.flash('Account settings updated successfully!')
+  } catch (e) {
+    const errs = e.response?.data?.errors
+    flash.flash(errs ? errs.join(' ') : (e.response?.data?.error || 'Failed to update account settings.'), 'error')
+  }
+  savingAccount.value = false
 }
 
 onMounted(async () => {
@@ -221,6 +292,9 @@ onMounted(async () => {
     profile.value = pRes.data
     availableInterests.value = iRes.data.interests
     populateForm(pRes.data)
+    // Pre-fill account settings with current credentials
+    accountForm.username = auth.user?.username || ''
+    accountForm.email    = auth.user?.email    || ''
   } catch {}
 })
 </script>
@@ -270,6 +344,8 @@ onMounted(async () => {
 .interest-btn.selected { background: var(--rose); color: #fff; border-color: var(--rose); }
 
 .save-row { margin-top: 24px; display: flex; justify-content: flex-end; }
+
+.req-note { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
 
 .muted { color: var(--muted); font-size: 0.84rem; }
 .sm    { font-size: 0.8rem; }

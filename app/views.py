@@ -510,6 +510,79 @@ def update_profile(user_id):
     }), 200
 
 
+@app.route('/api/v1/users/<int:user_id>/account', methods=['PUT'])
+@token_required
+def update_account(user_id):
+    """Update account credentials: username, email, and/or password."""
+    if g.current_user.id != user_id:
+        return jsonify({'error': 'Forbidden.'}), 403
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'User not found.'}), 404
+
+    data = request.get_json(silent=True) or {}
+
+    new_username     = (data.get('username') or '').strip()
+    new_email        = (data.get('email') or '').strip().lower()
+    current_password = data.get('current_password') or ''
+    new_password     = data.get('new_password') or ''
+    confirm_password = data.get('confirm_password') or ''
+
+    errors = []
+    changing_email    = bool(new_email and new_email != user.email)
+    changing_password = bool(new_password)
+
+    # Validate username
+    if new_username and new_username != user.username:
+        if len(new_username) < 3:
+            errors.append('Username must be at least 3 characters.')
+        elif User.query.filter(User.username == new_username, User.id != user_id).first():
+            errors.append('Username already taken.')
+
+    # Validate email
+    if changing_email:
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', new_email):
+            errors.append('A valid email address is required.')
+        elif User.query.filter(User.email == new_email, User.id != user_id).first():
+            errors.append('Email already registered to another account.')
+
+    # Validate new password
+    if changing_password:
+        if len(new_password) < 6:
+            errors.append('New password must be at least 6 characters.')
+        if new_password != confirm_password:
+            errors.append('New passwords do not match.')
+
+    # Require current password for sensitive changes
+    if changing_email or changing_password:
+        if not current_password:
+            errors.append('Current password is required to change email or password.')
+        elif not user.check_password(current_password):
+            errors.append('Current password is incorrect.')
+
+    if errors:
+        return jsonify({'errors': errors}), 400
+
+    try:
+        if new_username and new_username != user.username:
+            user.username = new_username
+        if changing_email:
+            user.email = new_email
+        if changing_password:
+            user.set_password(new_password)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        print(f'DEBUG update_account error: {exc}')
+        return jsonify({'error': 'Update failed due to a server error.'}), 500
+
+    return jsonify({
+        'message': 'Account updated successfully.',
+        'user': user.to_dict(),
+    }), 200
+
+
 # ============================================================
 # Like / Pass / Matching
 # ============================================================
