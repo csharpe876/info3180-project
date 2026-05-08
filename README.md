@@ -96,7 +96,7 @@ npm run dev
 ```
 
 ### 6. Open the app
-Visit **https://info3180-project-1-4z3c.onrender.com/** in your browser
+Visit **https://info3180-project-dt4x.onrender.com/** in your browser
 
 ---
 
